@@ -1,0 +1,100 @@
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseInMemoryDatabase("LibraryDb"));
+
+var app = builder.Build();
+
+
+app.MapGet("/authors", async (AppDbContext db) =>
+    await db.Authors.Include(a => a.Books).ToListAsync());
+
+app.MapGet("/authors/{id}", async (int id, AppDbContext db) =>
+    await db.Authors.FindAsync(id));
+
+app.MapPost("/authors", async (Author author, AppDbContext db) =>
+{
+    db.Authors.Add(author);
+    await db.SaveChangesAsync();
+    return Results.Created($"/authors/{author.Id}", author);
+});
+
+app.MapPut("/authors/{id}", async (int id, Author input, AppDbContext db) =>
+{
+    var author = await db.Authors.FindAsync(id);
+    if (author == null) return Results.NotFound();
+
+    author.Name = input.Name;
+    await db.SaveChangesAsync();
+
+    return Results.Ok(author);
+});
+
+app.MapDelete("/authors/{id}", async (int id, AppDbContext db) =>
+{
+    var author = await db.Authors.FindAsync(id);
+    if (author == null) return Results.NotFound();
+
+    db.Authors.Remove(author);
+    await db.SaveChangesAsync();
+
+    return Results.Ok();
+});
+
+
+app.MapGet("/books", async (AppDbContext db) =>
+    await db.Books.Include(b => b.Author).ToListAsync());
+
+app.MapPost("/books", async (Book book, AppDbContext db) =>
+{
+    db.Books.Add(book);
+    await db.SaveChangesAsync();
+    return Results.Created($"/books/{book.Id}", book);
+});
+
+app.MapPut("/books/{id}", async (int id, Book input, AppDbContext db) =>
+{
+    var book = await db.Books.FindAsync(id);
+    if (book == null) return Results.NotFound();
+
+    book.Title = input.Title;
+    book.AuthorId = input.AuthorId;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(book);
+});
+
+app.MapDelete("/books/{id}", async (int id, AppDbContext db) =>
+{
+    var book = await db.Books.FindAsync(id);
+    if (book == null) return Results.NotFound();
+
+    db.Books.Remove(book);
+    await db.SaveChangesAsync();
+
+    return Results.Ok();
+});
+
+
+app.MapGet("/publishers", async (AppDbContext db) =>
+    await db.Publishers.ToListAsync());
+
+app.MapPost("/publishers", async (Publisher publisher, AppDbContext db) =>
+{
+    db.Publishers.Add(publisher);
+    await db.SaveChangesAsync();
+    return Results.Created($"/publishers/{publisher.Id}", publisher);
+});
+
+app.MapDelete("/publishers/{id}", async (int id, AppDbContext db) =>
+{
+    var publisher = await db.Publishers.FindAsync(id);
+    if (publisher == null) return Results.NotFound();
+
+    db.Publishers.Remove(publisher);
+    await db.SaveChangesAsync();
+
+    return Results.Ok();
+});
+
+app.Run();
